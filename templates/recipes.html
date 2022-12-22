@@ -1,0 +1,333 @@
+<html>
+<head>
+
+<style>
+html { font-family:Verdana;font-size:12px;}
+.slider { display:flex; align-items:flex-end; font-size:12px; padding:3px 0; /*width:687px*/}
+.legend, .forwidth { display:flex; padding:10px 0 20px;}
+.selection { display:flex; justify-content:flex-end; width:200px;padding:10px 0 20px;}
+.l { width:16px; height:16px }
+.lt { padding:0 16px 0 5px }
+.le { margin:0; padding:0; border:0;  }
+.dayn{width:98px; text-align:right; padding-right:10px;}
+.day{width:100px; text-align:right; padding-right:10px;}
+.bar {position:relative;z-index:0;background-color:lightgray;display:flex; align-items:flex-end }
+.bar1 {position:absolute;top=0;left=0;z-index:1;display:flex; align-items:flex-end }
+.n { width:24px; height:16px; text-align:left;}
+.c,.c1 { height:16px; }
+.q { width:1px; height:5px;  background-color:gray;}
+.h { width:1px; height:10px;  background-color:gray;}
+.f { width:1px; height:16px;  background-color:gray;}
+
+.p1 { width:24px; }
+.p2 { width:12px; }
+.p4 { width:6px; }
+
+.p11 { width:23px; }
+.p12 { width:11px; }
+.p14 { width:5px; }
+
+.label { display:inline-block; width:300px; text-align:right; margin-right:5px; }
+#recipes span { display:inline-block; width:100px; }
+#createform input[type='text'] { width:500px; }
+</style>
+
+</head>
+
+<body>
+
+<h1>Recipes</h1>
+<div id="recipes"></div>
+<input type="button" value="new recipe" id="newRecipe"/>
+<hr>
+
+<div id="createform" style="display:none">
+<h1>New Recipe</h1>
+<span class="label">Name</span><input id="name" type="text"  value=""><br>
+<span class="label">Days (sep by ;)</span><input type="text" id="days" value=""><br>
+<span class="label">Labels (col,name sep by ;)</span><input type="text" id="labels" value=""><br>
+<span class="label">Time (1:hour, 2:Half Hour, 4:Quarters)</span><input type="text"  id="time" value=""><br>
+<input type="button" value="create" id="create"/>
+</div>
+
+<h1 id="recipe">Recipe</h1>
+<div id="scheduler" class="scheduler">
+</div>
+<hr>
+<input type="button" value="save" id="save"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js" integrity="sha512-STof4xm1wgkfm7heWqFJVn58Hm3EtS31XFaagaa8VMReCXAkQnJZ+jEy8PCC/iT18dFy95WcExNHFTqLyp72eQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+/*
+Mo-Tu-We-Th-Fr;Sa-Su
+lightgray,off;#ff0000,18°;#00ff00,20°;#0000ff,22°
+*/
+$(document).ready(()=>{
+
+var mousedown=0, scheduler=null;
+
+$(document).on("mousedown",()=>mousedown++);
+$(document).on("mouseup",()=>mousedown=0);
+
+class Schedulers {
+	id="";
+	dbs=[];
+	runningSchedule=null;
+	
+	constructor(id) {
+		var me=this;
+		this.id=id;
+		$("#newRecipe").on("click",()=>{$("#createform input[type='text']").val(""); $("#createform").show(); })
+		$("#create").on("click",()=>me.create())
+		$("#save").on("click",()=>scheduler.save());
+
+		$.ajax({
+			type: "POST",
+			url: "/api/list",
+			data: JSON.stringify({fn:id}),
+			dataType: "json",
+			contentType: "application/json; charset=utf-8",
+			success: function(data){ 
+				me.dbs=data.dbs; 
+				for(var i=0;i<me.dbs.length;i++)
+					me.db(me.dbs[i])
+				$("#"+me.id+" .del").on("click",()=>me.del($(event.target).parent().attr("dbname")))
+				$("#"+me.id+" .edit").on("click",()=>me.edit($(event.target).parent().attr("dbname")) )
+				$("#"+me.id+" .run").on("click",()=>me.running($(event.target).parent().attr("dbname")))
+				me.running()
+			},
+			error: function(errMsg) {
+				alert(errMsg);
+			}
+		});
+	}
+	
+	running(run=null) {
+		var me=this;
+		$.ajax({
+			type: "POST",
+			url: "/api/running",
+			data: JSON.stringify({running:run,op:run==null?"load":"save"}),
+			dataType: "json",
+			contentType: "application/json; charset=utf-8",
+			success: function(data){ 
+				me.runningSchedule=data.running; 
+				$("div.db").css("background-color","inherit"); 
+				$("div.db[dbname='"+data.running+"']").css("background-color","red"); 
+			},
+			error: function(errMsg) {
+				alert(errMsg);
+			}
+		});
+	}
+
+	db(name) {
+		$("#"+this.id).append("<div class='db' dbname='"+name+"'><span class='name'>"+name+"</span> - <span class='del'>del</span> - <span class='edit'>Edit</span> - <span class='run'>run</span></div>")
+	}
+	
+	edit(name) {
+		$("#recipe").html("Recipe: "+name)
+		scheduler=new Scheduler("scheduler",name,[["",""]],[],1);
+	}
+	
+	del(name) {
+		$.ajax({
+			type: "POST",
+			url: "/api/delete",
+			data: JSON.stringify({fn:name}),
+			dataType: "json",
+			contentType: "application/json; charset=utf-8",
+			success: function(data){ 
+				location.reload();
+			},
+			error: function(errMsg) {
+			}
+		});
+	}
+	
+	create() {
+		var labels=[]
+		var ls=$("#labels").val().split(";")
+		for(var i=0;i<ls.length;i++)
+			labels.push(ls[i].split(","))
+		scheduler=new Scheduler("scheduler", $("#name").val(),labels,$("#days").val().split(";"),parseInt($("#time").val()));
+		$("#createform").hide()
+		
+	}
+}
+
+class Scheduler {
+
+	days=[];
+	slots=[];
+	temps=[];
+	temp=0;
+	id="";
+	hourParts=1;
+	name="";
+	
+	constructor(id, name, temps, days, hourParts=4) {
+		var me=this;
+		$("#"+id).html("")
+		this.id=id;
+		this.name=name;
+		this.temps=temps;
+		this.days=days;
+		this.hourParts=hourParts;
+		for(var i=0;i<7;i++)
+			this.slots.push(new Array(24*this.hourParts).fill(0))
+		$.ajax({
+			type: "POST",
+			url: "/api/load",
+			data: JSON.stringify({fn:name}),
+			dataType: "json",
+			contentType: "application/json; charset=utf-8",
+			success: function(data){ 
+				if(data.loaded==1) {
+					me.slots=data.db; 
+					me.temps=data.temps;
+					me.hourParts=data.hourParts;
+					me.days=data.days;
+				}
+				me.create() 
+			},
+			error: function(errMsg) {
+				alert(errMsg);
+				me.create();
+			}
+		});
+	}
+	
+	save() {
+		var me=this;
+		$.ajax({
+			type: "POST",
+			url: "/api/save",
+			data: JSON.stringify({ fn:me.name, data:{db: me.slots, temps:me.temps, days:me.days, hourParts:me.hourParts }}),
+			contentType: "application/json; charset=utf-8",
+			dataType: "json",
+			success: function(data){alert("saved");},
+			error: function(errMsg) {
+				alert(errMsg);
+			}
+		});
+	}
+	
+	create() {
+		var id=this.id;
+		var me=this;
+		var handler=(mouse)=>(e)=>{
+			var els=document.elementsFromPoint(e.pageX,e.pageY);
+			els.forEach((el, i) => {
+				var target=$(el);
+				if(target.hasClass("c"))
+					if(mouse||mousedown>0) {
+						$(target).css("background-color",me.temps[me.temp][0]) 
+						me.slots[parseInt(target.parent().parent().attr("row"))][parseInt(target.attr("col"))]=me.temp;
+					}
+			});
+		}
+		$("#"+id).append($(`<div id='${id}le' class='slider'></div>`));
+		this.legend(`${id}le`);
+		$("#"+id).append($(`<div id='${id}ns' class='slider'></div>`));
+		this.numbers(`${id}ns`);
+		for(var i=0;i<this.days.length;i++) {
+			$("#"+id).append($(`<div id='${id}s${i}' class='slider' row='${i}'></div>`));
+			this.bar(`${id}s`,i);
+		}
+		$("#"+id).append($(`<div id='${id}ne' class='slider'></div>`));
+		this.numbers(`${id}ne`);
+		$(`#${this.id} .c1`).on("mouseover",handler(false))
+		$(`#${this.id} .c1`).on("mousedown",handler(true))
+	}
+	numbers(id) {
+		var s="";
+		
+		s+="<div class='dayn'></div>";
+		for(var i=0;i<24;i++) 
+			s+="<div class='n'>"+i+"</div>";
+		s+="</div>";
+		$("#"+id).html(s);
+	}
+
+	selClick(l,index) {
+		var me=this;
+		l.on("click",()=>{me.select(index);});
+	}
+	legend(id) {
+		var setWidth=(el)=>{
+			var forwidth=$("#"+id+" .forwidth")
+			forwidth.html(el.value);
+			var width=forwidth.width();
+			forwidth.html("");
+			$(el).css("width",""+width);
+		}		
+		var s="";
+		s+="<div class='day'></div>";
+		s+="<div class='legend'></div>";
+		s+="<div class='forwidth'></div><div class='selection'></div>";
+		$("#"+id).html(s);
+		for(var i=0;i<this.temps.length;i++) {
+			var l=$("<div class='l' style='background-color:"+this.temps[i][0]+"'></div>");
+			var lt=$("<div class='lt'><input class='le' arrayIndex='"+i+"' value='"+this.temps[i][1]+"'/></div>");
+			$("#"+id+" .legend").append(l);
+			$("#"+id+" .legend").append(lt);
+			this.selClick(l,i);
+		}		
+		var els=$("#"+id+" input")
+		for(var i=0;i<els.length;i++) 
+			setWidth(els[i])
+		var me=this;
+		$("#"+id+" input").focusin(()=> { var el=event.target; $(el).width(100); $(el).css("background-color","yellow"); });
+		$("#"+id+" input").on("change",(el)=> {
+			el=el.target;
+			setWidth(el);
+			$(el).css("background-color","inherit");
+			me.temps[parseInt($(el).attr("arrayIndex"))][1]=el.value;
+		});
+		this.select(0);
+	}
+	
+	select(index) {
+		this.temp=index;
+		$(`#${this.id} .selection`).html("<div class='lt'>"+this.temps[index][1]+"</div><div class='l' style='background-color:"+this.temps[index][0]+"'></div>");
+	}
+	
+	cell(r,c) {
+		return "<div class='c p"+this.hourParts+"' col='"+c+"' style='background-color:"+this.temps[this.slots[r][c]][0]+"'></div>"
+	}
+	
+	rcell(r,c,p) {
+		return "<div class='"+("fqhq".charAt(p))+"'></div><div class='c1 p1"+this.hourParts+"'></div>"
+	}
+	
+	bar(id,r) {
+		var s="";
+		var s1="";
+		
+		s+="<div class='day'>"+this.days[r]+"</div><div class='bar'>";
+		s1="<div class='bar1'>"
+		var steps=[4,2,1,1]
+		var parts=[[0,0,0,0],[0,0,1,1],[0,0,0,0],[0,1,2,3]];
+		
+		for(var i=0;i<24;i++) { 
+			for(var j=0;j<4;j+=steps[this.hourParts-1]) {
+				s+=this.cell(r,i*this.hourParts+parts[this.hourParts-1][j]);
+				s1+=this.rcell(r,i*this.hourParts+parts[this.hourParts-1][j],j);
+			}
+		}
+		s1+="<div class='f'></div></div>";
+		s+=s1+"</div>";
+		$("#"+id+r).html(s);
+	
+	}
+}
+
+//scheduler=new Scheduler("scheduler","base",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]],["Lunedì","Martedì","Mercoledì","Giovedi","Venerdi","Sabato","Domenica"],1);
+var schedulers=new Schedulers("recipes");
+
+})
+</script>
+</body>
+</html>
