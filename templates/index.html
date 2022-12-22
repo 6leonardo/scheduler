@@ -1,0 +1,197 @@
+<html>
+<head>
+
+<style>
+html { font-family:Verdana;}
+.slider { display:flex; align-items:flex-end; font-size:12px; padding:3px 0; /*width:687px*/}
+.legend { display:flex; padding:10px 0 20px;}
+.selection { display:flex; justify-content:flex-end; width:200px;padding:10px 0 20px;}
+.l { width:16px; height:16px }
+.lt { padding:0 16px 0 5px }
+
+.dayn{width:98px; text-align:right; padding-right:10px;}
+.day{width:100px; text-align:right; padding-right:10px;}
+.bar {position:relative;z-index:0;background-color:lightgray;display:flex; align-items:flex-end }
+.bar1 {position:absolute;top=0;left=0;z-index:1;display:flex; align-items:flex-end }
+.n { width:24px; height:16px; text-align:left;}
+.c { width:6px; height:16px; }
+.c1 { width:5px; height:16px; }
+.q { width:1px; height:5px;  background-color:gray;}
+.h { width:1px; height:10px;  background-color:gray;}
+.f { width:1px; height:16px;  background-color:gray;}
+
+
+
+</style>
+
+</head>
+
+<body>
+
+<div id="scheduler" class="scheduler">
+</div>
+
+<input type="button" value="save" id="save"/>
+
+<div id="debug"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js" integrity="sha512-STof4xm1wgkfm7heWqFJVn58Hm3EtS31XFaagaa8VMReCXAkQnJZ+jEy8PCC/iT18dFy95WcExNHFTqLyp72eQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+
+$(document).ready(()=>{
+
+var mousedown=0;
+
+$(document).on("mousedown",()=>mousedown++);
+$(document).on("mouseup",()=>mousedown=0);
+
+class Sliders {
+
+	days=["Lunedì","Martedì","Mercoledì","Giovedi","Venderdi","Sabato","Domenica"];
+	slots=[]
+	temps=[]
+	temp=0;
+	
+	constructor(id, temps) {
+		var me=this;
+		this.temps=temps;
+		for(var i=0;i<7;i++)
+			this.slots.push(new Array(24*4).fill(0))
+		$.ajax({
+			type: "GET",
+			url: "/load",
+			dataType: "json",
+			contentType: "application/json; charset=utf-8",
+			success: function(data){ 
+				if(data.loaded==1) {
+					me.slots=data.db; 
+					me.temps=data.temps; 
+				}
+				me.create(id) 
+			},
+			error: function(errMsg) {
+				alert(errMsg);
+				me.create(id);
+			}
+		});
+	}
+	
+	save() {
+		var me=this;
+		$.ajax({
+			type: "POST",
+			url: "/save",
+			data: JSON.stringify({ db: me.slots, temps:me.temps }),
+			contentType: "application/json; charset=utf-8",
+			dataType: "json",
+			success: function(data){alert("saved");},
+			error: function(errMsg) {
+				alert(errMsg);
+			}
+		});
+	}
+	
+	create(id) {
+		var me=this;
+		var handler=(e)=>{
+			var els=document.elementsFromPoint(e.pageX,e.pageY);
+			els.forEach((el, i) => {
+				var target=$(el);
+				if(target.hasClass("c"))
+					if(mousedown>0) {
+						$(target).css("background-color",me.temps[me.temp][0]) 
+						me.slots[parseInt(target.parent().parent().attr("row"))][parseInt(target.attr("col"))]=me.temp;
+						console.log(me.slots);
+					}
+			});
+		}
+		var handler1=(e)=>{
+			var els=document.elementsFromPoint(e.pageX,e.pageY);
+			els.forEach((el, i) => {
+				var target=$(el);
+				if(target.hasClass("c")) {
+					$(target).css("background-color",me.temps[me.temp][0]) 
+					me.slots[parseInt(target.parent().parent().attr("row"))][parseInt(target.attr("col"))]=me.temp;
+					console.log(me.slots);
+				}
+			});
+		}
+		$("#"+id).append($("<div id='le' class='slider'></div>"));
+		this.legend("le");
+		$("#"+id).append($("<div id='ns' class='slider'></div>"));
+		this.numbers("ns");
+		for(var i=0;i<7;i++) {
+			$("#"+id).append($("<div id='s"+i+"' class='slider' row='"+i+"'></div>"));
+			this.bar("s",i);
+		}
+		$("#"+id).append($("<div id='ne' class='slider'></div>"));
+		this.numbers("ne");
+		$(".c1").on("mouseover",handler)
+		$(".c1").on("mousedown",handler1)
+	}
+	numbers(id) {
+		var s="";
+		
+		s+="<div class='dayn'></div>";
+		for(var i=0;i<24;i++) 
+			s+="<div class='n'>"+i+"</div>";
+		s+="</div>";
+		$("#"+id).html(s);
+	}
+
+	selClick(l,index) {
+		var me=this;
+		l.on("click",()=>{me.select(index);});
+	}
+	legend(id) {
+		var s="";
+		s+="<div class='day'></div>";
+		s+="<div class='legend'></div>";
+		s+="</div><div class='selection'></div>";
+		$("#"+id).html(s);
+		for(var i=0;i<this.temps.length;i++) {
+			var l=$("<div class='l' style='background-color:"+this.temps[i][0]+"'></div>");
+			var lt=$("<div class='lt'>"+this.temps[i][1]+"</div>");
+			$("#"+id+" .legend").append(l);
+			$("#"+id+" .legend").append(lt);
+			this.selClick(l,i);
+		}		
+		this.select(0);
+	}
+	
+	select(index) {
+		this.temp=index;
+		$(".selection").html("<div class='lt'>"+this.temps[index][1]+"</div><div class='l' style='background-color:"+this.temps[index][0]+"'></div>");
+	}
+	
+	cell(r,c) {
+		return "<div class='c' col='"+c+"' style='background-color:"+this.temps[this.slots[r][c]][0]+"'></div>"
+	}
+	bar(id,r) {
+		var s="";
+		var s1="";
+		
+		s+="<div class='day'>"+this.days[r]+"</div><div class='bar'>";
+		s1="<div class='bar1'>"
+		
+		for(var i=0;i<24;i++) { 
+			for(var j=0;j<4;j++)
+				s+=this.cell(r,i*4+j);
+			s1+="<div class='f'></div><div class='c1'></div><div class='q'></div><div class='c1'></div><div class='h'></div><div class='c1'></div><div class='q'></div><div class='c1'></div>";
+		}
+		s1+="<div class='f'></div></div>";
+		s+=s1+"</div>";
+		$("#"+id+r).html(s);
+	
+	}
+}
+
+scheduler=new Sliders("scheduler",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]]);
+
+$("#save").on("click",()=>scheduler.save());
+
+})
+</script>
+</body>
+</html>
