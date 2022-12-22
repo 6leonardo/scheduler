@@ -14,12 +14,18 @@ html { font-family:Verdana;}
 .bar {position:relative;z-index:0;background-color:lightgray;display:flex; align-items:flex-end }
 .bar1 {position:absolute;top=0;left=0;z-index:1;display:flex; align-items:flex-end }
 .n { width:24px; height:16px; text-align:left;}
-.c { width:6px; height:16px; }
-.c1 { width:5px; height:16px; }
+.c,.c1 { height:16px; }
 .q { width:1px; height:5px;  background-color:gray;}
 .h { width:1px; height:10px;  background-color:gray;}
 .f { width:1px; height:16px;  background-color:gray;}
 
+.p1 { width:24px; }
+.p2 { width:12px; }
+.p4 { width:6px; }
+
+.p11 { width:23px; }
+.p12 { width:11px; }
+.p14 { width:5px; }
 
 
 </style>
@@ -48,16 +54,19 @@ $(document).on("mouseup",()=>mousedown=0);
 
 class Sliders {
 
-	days=["Lunedì","Martedì","Mercoledì","Giovedi","Venderdi","Sabato","Domenica"];
-	slots=[]
-	temps=[]
+	days=[];
+	slots=[];
+	temps=[];
 	temp=0;
+	hourParts=1;
 	
-	constructor(id, temps) {
+	constructor(id, temps, days, hourParts=4) {
 		var me=this;
 		this.temps=temps;
+		this.days=days;
+		this.hourParts=hourParts;
 		for(var i=0;i<7;i++)
-			this.slots.push(new Array(24*4).fill(0))
+			this.slots.push(new Array(24*this.hourParts).fill(0))
 		$.ajax({
 			type: "GET",
 			url: "/load",
@@ -66,7 +75,9 @@ class Sliders {
 			success: function(data){ 
 				if(data.loaded==1) {
 					me.slots=data.db; 
-					me.temps=data.temps; 
+					me.temps=data.temps;
+					me.hourParts=data.hourParts;
+					me.days=data.days;
 				}
 				me.create(id) 
 			},
@@ -82,7 +93,7 @@ class Sliders {
 		$.ajax({
 			type: "POST",
 			url: "/save",
-			data: JSON.stringify({ db: me.slots, temps:me.temps }),
+			data: JSON.stringify({ db: me.slots, temps:me.temps, days:me.days, hourParts:me.hourParts }),
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			success: function(data){alert("saved");},
@@ -121,7 +132,7 @@ class Sliders {
 		this.legend("le");
 		$("#"+id).append($("<div id='ns' class='slider'></div>"));
 		this.numbers("ns");
-		for(var i=0;i<7;i++) {
+		for(var i=0;i<this.days.length;i++) {
 			$("#"+id).append($("<div id='s"+i+"' class='slider' row='"+i+"'></div>"));
 			this.bar("s",i);
 		}
@@ -166,19 +177,27 @@ class Sliders {
 	}
 	
 	cell(r,c) {
-		return "<div class='c' col='"+c+"' style='background-color:"+this.temps[this.slots[r][c]][0]+"'></div>"
+		return "<div class='c p"+this.hourParts+"' col='"+c+"' style='background-color:"+this.temps[this.slots[r][c]][0]+"'></div>"
 	}
+	
+	rcell(r,c,p) {
+		return "<div class='"+("fqhq".charAt(p))+"'></div><div class='c1 p1"+this.hourParts+"'></div>"
+	}
+	
 	bar(id,r) {
 		var s="";
 		var s1="";
 		
 		s+="<div class='day'>"+this.days[r]+"</div><div class='bar'>";
 		s1="<div class='bar1'>"
+		var steps=[4,2,1]
+		var parts=[[0,0,0,0],[0,0,1,1],[0,1,2,3]];
 		
 		for(var i=0;i<24;i++) { 
-			for(var j=0;j<4;j++)
-				s+=this.cell(r,i*4+j);
-			s1+="<div class='f'></div><div class='c1'></div><div class='q'></div><div class='c1'></div><div class='h'></div><div class='c1'></div><div class='q'></div><div class='c1'></div>";
+			for(var j=0;j<4;j+=steps[this.hourParts-1]) {
+				s+=this.cell(r,i*this.hourParts+parts[this.hourParts-1][j]);
+				s1+=this.rcell(r,i*this.hourParts+parts[this.hourParts-1][j],j);
+			}
 		}
 		s1+="<div class='f'></div></div>";
 		s+=s1+"</div>";
@@ -187,7 +206,7 @@ class Sliders {
 	}
 }
 
-scheduler=new Sliders("scheduler",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]]);
+scheduler=new Sliders("scheduler",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]],["Lunedì","Martedì","Mercoledì","Giovedi","Venderdi","Sabato","Domenica"],1);
 
 $("#save").on("click",()=>scheduler.save());
 
