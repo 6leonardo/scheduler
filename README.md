@@ -22,3 +22,7 @@ it's possible to change the legend labels clicking over the labels and writing, 
 
 
 ![image info](scheduler.JPG)
+
+
+you can also try the page /recipes
+inside this page you can edit different scheduler recipes and save the recipe and chose one recipe to run 
