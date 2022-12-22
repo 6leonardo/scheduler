@@ -80,7 +80,7 @@ class Sliders {
 			this.slots.push(new Array(24*this.hourParts).fill(0))
 		$.ajax({
 			type: "POST",
-			url: "/load",
+			url: "/api/load",
 			data: JSON.stringify({fn:id}),
 			dataType: "json",
 			contentType: "application/json; charset=utf-8",
@@ -104,7 +104,7 @@ class Sliders {
 		var me=this;
 		$.ajax({
 			type: "POST",
-			url: "/save",
+			url: "/api/save",
 			data: JSON.stringify({ fn:me.id, data:{db: me.slots, temps:me.temps, days:me.days, hourParts:me.hourParts }}),
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
@@ -225,7 +225,7 @@ class Sliders {
 	}
 }
 
-scheduler1=new Sliders("sc1",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]],["Lunedì","Martedì","Mercoledì","Giovedi","Venderdi","Sabato","Domenica"],1);
+scheduler1=new Sliders("sc1",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"]],["Lunedì","Martedì","Mercoledì","Giovedi","Venerdi","Sabato","Domenica"],1);
 scheduler2=new Sliders("sc2",[["lightgray","spento"],["#ffff00","16°"],["#00ffff","17°"]],["Lun-Ven","Sab-Dom"],4);
 scheduler3=new Sliders("sc3",[["lightgray","spento"],["#ff0000","18°"],["#00ff00","20°"],["#0000ff","22°"],["#000000","24°"]],["Lun-Ven","Sab-Dom"],2);
 
