@@ -10,17 +10,18 @@ def index():
      
 @app.route('/save',methods=["POST"])
 def save():
-    file=open("db.json","w",encoding="utf-8")
-    file.write(json.dumps(request.get_json()))
+    j=request.get_json()
+    file=open("db-"+j["fn"]+".json","w",encoding="utf-8")
+    file.write(json.dumps(j["data"]))
     file.close()    
     db={"saved":1}
     return json.dumps(db)
 
-@app.route('/load')
+@app.route('/load',methods=["POST"])
 def load():
-    if exists("db.json"):
-        
-        file=open("db.json","r",encoding="utf-8")
+    j=request.get_json()
+    if exists("db-"+j["fn"]+".json"):
+        file=open("db-"+j["fn"]+".json","r",encoding="utf-8")
         db=json.loads(file.read())
         file.close()
         db["loaded"]=1
