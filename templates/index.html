@@ -118,27 +118,15 @@ class Sliders {
 	create() {
 		var id=this.id;
 		var me=this;
-		var handler=(e)=>{
+		var handler=(mouse)=>(e)=>{
 			var els=document.elementsFromPoint(e.pageX,e.pageY);
 			els.forEach((el, i) => {
 				var target=$(el);
 				if(target.hasClass("c"))
-					if(mousedown>0) {
+					if(mouse||mousedown>0) {
 						$(target).css("background-color",me.temps[me.temp][0]) 
 						me.slots[parseInt(target.parent().parent().attr("row"))][parseInt(target.attr("col"))]=me.temp;
-						console.log(me.slots);
 					}
-			});
-		}
-		var handler1=(e)=>{
-			var els=document.elementsFromPoint(e.pageX,e.pageY);
-			els.forEach((el, i) => {
-				var target=$(el);
-				if(target.hasClass("c")) {
-					$(target).css("background-color",me.temps[me.temp][0]) 
-					me.slots[parseInt(target.parent().parent().attr("row"))][parseInt(target.attr("col"))]=me.temp;
-					console.log(me.slots);
-				}
 			});
 		}
 		$("#"+id).append($(`<div id='${id}le' class='slider'></div>`));
@@ -151,8 +139,8 @@ class Sliders {
 		}
 		$("#"+id).append($(`<div id='${id}ne' class='slider'></div>`));
 		this.numbers(`${id}ne`);
-		$(`#${this.id} .c1`).on("mouseover",handler)
-		$(`#${this.id} .c1`).on("mousedown",handler1)
+		$(`#${this.id} .c1`).on("mouseover",handler(false))
+		$(`#${this.id} .c1`).on("mousedown",handler(true))
 	}
 	numbers(id) {
 		var s="";
