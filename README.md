@@ -1,8 +1,8 @@
 # scheduler
 
-easy 24x7 js widget scheduler all with a simple flask app to load and save db, the db is a 7x(24*4) matrix with the scheduled values and a array with the scheduled values
+easy 24x7 js widget scheduler all with a simple flask app to load and save db, the db is a 7x(24*4) matrix with the scheduled values and a array with the scheduled values.
 
-in index.html a simple html and js control to schedule temps may be to use with arduino
+in index.html a simple html and js control to schedule temps may be to use with arduino.
 
 examples
 
@@ -16,5 +16,9 @@ $("#save1").on("click",()=>scheduler1.save());
 $("#save2").on("click",()=>scheduler2.save());
 $("#save3").on("click",()=>scheduler3.save());
 ```
+
+it's possible to change the legend labels clicking over the labels and writing, on save the scheduler timesheet also the labels are saved.
+
+
 
 ![image info](scheduler.JPG)
